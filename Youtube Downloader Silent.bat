@@ -1,1 +1,3 @@
-pythonw.exe C:\Users\pmari\Documents\GitHub\Python-Youtube-Downloader\main.py
+@echo off
+cd /d "%~dp0Python-Youtube-Downloader"
+python main.py
