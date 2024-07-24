@@ -11,41 +11,52 @@ def is_valid_youtube_url(url):
     
     return bool(re.match(youtube_regex, url))
 
+def sort_resolutions(resolutions):
+    # Parse resolutions to extract the numerical part and sort them in descending order
+    sorted_resolutions = sorted(resolutions, key=lambda x: int(x[:-1]), reverse=True)
+    return sorted_resolutions
+
 def get_video_resolutions(url):
     #Fetch available resolutions for a YouTube video.
     global yt_obj
-    yt_obj = YouTube(url)
-    resolutions = set()  # Use a set to avoid duplicate resolutions
-    for stream in yt_obj.streams.filter(progressive=True):
-        resolutions.add(stream.resolution)
-    for stream in yt_obj.streams.filter(only_video=True, file_extension='mp4'):
-        resolutions.add(stream.resolution)
-    return sorted(resolutions, reverse = True)  # Return a sorted list of resolutions
+    yt_obj = YouTube(url, on_progress_callback=on_progress)
+    resolutions = []
+    for stream in yt_obj.streams.filter(progressive=True, only_audio=False):
+        temp = stream.resolution + "Progressive" #Adds the word "Progressive" to the resolution to differentiate it from the other resolutions
+        resolutions.append(temp)  # Add the resolution to the set
+    for stream in yt_obj.streams.filter(adaptive=True, only_audio=False):
+        temp = stream.resolution + "Adaptive" #Adds the word "Adaptive" to the resolution to differentiate it from the other resolutions
+        resolutions.append(temp)  # Add the resolution to the set
+    print(resolutions)
+    #return sort_resolutions(resolutions)  # Return a sorted list of resolutions
 
 def download_video():
-    if not is_valid_youtube_url(link_input.get()):
-        finished_label.configure(text="Invalid YouTube link", text_color="red")
-    else:
-        try:
-            finished_label.configure(text="Downloading video...", text_color="white")
-            title.configure(text=yt_obj.title)
-            video = yt_obj.streams.get_highest_resolution() #Gets the highest resolution video stream
-            video.download() #Downloads the video
-            finished_label.configure(text="Download finished!", text_color="white")
-        except Exception as e:
-            print(e)
-            finished_label.configure(text="Unable to download video", text_color="red")
+    try:
+        finished_label.configure(text="Downloading video...", text_color="white")
+        title.configure(text=yt_obj.title)
+        video = yt_obj.streams.get_highest_resolution() #Gets the highest resolution video stream
+        video.download() #Downloads the video
+        finished_label.configure(text="Download finished!", text_color="white")
+    except Exception as e:
+        finished_label.configure(text="Unable to download video", text_color="red")
     
-def update_resolutions_dropdown(*args):
+def update_settings_widgets(*args):
     #Update resolutions dropdown based on the YouTube link input.
+    global resolution_dropdown
     url = link_input.get()
     if is_valid_youtube_url(url):
         resolutions = get_video_resolutions(url)
-        resolution_dropdown['values'] = resolutions
+        resolution_dropdown.configure(values=resolutions)  # Update the dropdown values
         resolution_dropdown.set(resolutions[0])  # Set the first resolution as the default selection
-        resolution_dropdown.pack(padx=10, pady=10)  # Ensure the dropdown is visible
+        resolution_dropdown.pack(padx=10, pady=10)  # Make the dropdown is visible
+        resolution_dropdown.update()  # Forcefully update the dropdown
+        finished_label.configure(text="", text_color="white") # Clear the finished label
+        download_button.configure(state="normal")  # Enable the download button
     else:
+        resolution_dropdown['values'] = [] # Clear the dropdown values
         resolution_dropdown.pack_forget()  # Hide the dropdown if the URL is invalid
+        download_button.configure(state="disabled")
+        finished_label.configure(text="Invalid YouTube link", text_color="red")
 
 def on_progress(stream, chunk, bytes_remaining):
     total_size = stream.filesize #Total size of the video in bytes
@@ -73,20 +84,20 @@ title = customtkinter.CTkLabel(app, text="Insert YouTube link:", font = custom_f
 title.pack(padx=10, pady=10)
 
 url_entry = tkinter.StringVar()
-url_entry.trace_add("write", update_resolutions_dropdown)
-link_input = customtkinter.CTkEntry(app, width=350, height=40, font = custom_font, textvariable=url_entry)
+url_entry.trace_add("write", update_settings_widgets)
+link_input = customtkinter.CTkEntry(app, width=400, height=40, font = custom_font, textvariable=url_entry)
 link_input.pack(padx=10, pady=10)
 
 finished_label = customtkinter.CTkLabel(app, text="", font = custom_font)
 finished_label.pack(padx=10, pady=10)
 
-download_button = customtkinter.CTkButton(app, text="Download", font = custom_font, command = download_video)
+download_button = customtkinter.CTkButton(app, text="Download", font = custom_font, command = download_video, state="disabled")
 download_button.pack(padx=10, pady=10)
 
 progress_percentage = customtkinter.CTkLabel(app, text="Thanks for using my youtube downloader <3", font = custom_font)
 progress_percentage.pack(padx=10, pady=10)
 
-progress_bar = customtkinter.CTkProgressBar(app, width=350, height=10)
+progress_bar = customtkinter.CTkProgressBar(app, width=400, height=15)
 progress_bar.set(0)
 progress_bar.pack(padx=10, pady=10)
 
@@ -98,4 +109,4 @@ yt_obj = None
 #Run app
 app.mainloop()
 
-#        https://www.youtube.com/watch?v=PzvPPXdASWo
+#        https://www.youtube.com/watch?v=3pdVtlBYtrc
