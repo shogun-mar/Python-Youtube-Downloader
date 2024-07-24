@@ -12,32 +12,60 @@ def is_valid_youtube_url(url):
     return bool(re.match(youtube_regex, url))
 
 def sort_resolutions(resolutions):
-    # Parse resolutions to extract the numerical part and sort them in descending order
-    sorted_resolutions = sorted(resolutions, key=lambda x: int(x[:-1]), reverse=True)
+    """This code uses the re.search function from the re module to find the first sequence of digits (\d+) 
+    in each string in the resolutions list. The .group() method then extracts this sequence of digits, 
+    which int() converts to an integer for sorting."""
+
+    sorted_resolutions = sorted(resolutions, key=lambda x: int(re.search('(\\d+)', x).group()), reverse=True)
     return sorted_resolutions
 
-def get_video_resolutions(url):
+def get_itag(string):
+    match = re.search(r'\(itag=(\d+)\)', string)
+    if match:
+        itag_value = match.group(1)
+    return itag_value
+
+def sort_qualities(qualities):
+    # Parse qualities to extract the numerical part and sort them in descending order
+    sorted_qualities = sorted(qualities, key=lambda x: int(re.search('(\\d+)', x).group()), reverse=True)
+    return sorted_qualities
+
+def get_stream_details(url):
     #Fetch available resolutions for a YouTube video.
     global yt_obj
     yt_obj = YouTube(url, on_progress_callback=on_progress)
     resolutions = []
+    qualities = []
     for stream in yt_obj.streams.filter(progressive=True, only_audio=False):
-        temp = stream.resolution + "Progressive" #Adds the word "Progressive" to the resolution to differentiate it from the other resolutions
+        temp = f"{stream.resolution} (itag={stream.itag})"
         resolutions.append(temp)  # Add the resolution to the set
-    for stream in yt_obj.streams.filter(adaptive=True, only_audio=False):
-        temp = stream.resolution + "Adaptive" #Adds the word "Adaptive" to the resolution to differentiate it from the other resolutions
-        resolutions.append(temp)  # Add the resolution to the set
-    print(resolutions)
-    #return sort_resolutions(resolutions)  # Return a sorted list of resolutions
+    for stream in yt_obj.streams.filter(adaptive=True, only_audio=True):
+        temp = f"{stream.abr} (itag={stream.itag})"
+        qualities.append(temp)  # Add the resolution to the set
+    
+    stream_details = sort_resolutions(resolutions) + sort_resolutions(qualities)
+    return stream_details
 
-def download_video():
+def download_stream_as_mp3(stream_string):
+
+def is_audio_stream(stream_string):
+    return "kbps" in stream_string
+
+def download_stream():
     try:
         finished_label.configure(text="Downloading video...", text_color="white")
         title.configure(text=yt_obj.title)
-        video = yt_obj.streams.get_highest_resolution() #Gets the highest resolution video stream
-        video.download() #Downloads the video
+
+        chosen_stream_string = resolution_dropdown.get()
+        if not is_audio_stream(chosen_stream_string): #If the chosen stream is not an audio stream
+            stream = yt_obj.streams.get_by_itag(get_itag(chosen_stream_string)) #Gets the video stream by itag
+            stream.download() #Downloads the stream
+        else: #If the chosen stream is an audio stream
+            stream = yt_obj.streams.get_by_itag(get_itag(chosen_stream_string))
+
         finished_label.configure(text="Download finished!", text_color="white")
     except Exception as e:
+        print(e)
         finished_label.configure(text="Unable to download video", text_color="red")
     
 def update_settings_widgets(*args):
@@ -45,7 +73,7 @@ def update_settings_widgets(*args):
     global resolution_dropdown
     url = link_input.get()
     if is_valid_youtube_url(url):
-        resolutions = get_video_resolutions(url)
+        resolutions = get_stream_details(url)
         resolution_dropdown.configure(values=resolutions)  # Update the dropdown values
         resolution_dropdown.set(resolutions[0])  # Set the first resolution as the default selection
         resolution_dropdown.pack(padx=10, pady=10)  # Make the dropdown is visible
@@ -91,7 +119,7 @@ link_input.pack(padx=10, pady=10)
 finished_label = customtkinter.CTkLabel(app, text="", font = custom_font)
 finished_label.pack(padx=10, pady=10)
 
-download_button = customtkinter.CTkButton(app, text="Download", font = custom_font, command = download_video, state="disabled")
+download_button = customtkinter.CTkButton(app, text="Download", font = custom_font, command = download_stream, state="disabled")
 download_button.pack(padx=10, pady=10)
 
 progress_percentage = customtkinter.CTkLabel(app, text="Thanks for using my youtube downloader <3", font = custom_font)
