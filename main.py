@@ -1,6 +1,8 @@
 import tkinter, customtkinter, re
+import tkinter.filedialog
 from pytubefix import YouTube
 from pytubefix.cli import on_progress
+from os import rename
 
 def is_valid_youtube_url(url):
     # Simple validation for a YouTube URL
@@ -46,12 +48,18 @@ def get_stream_details(url):
     stream_details = sort_resolutions(resolutions) + sort_resolutions(qualities)
     return stream_details
 
-def download_stream_as_mp3(stream_string):
+def download_stream_as_mp3(stream, desired_output_path):
+
+    file_path = stream.download(output_path=desired_output_path)
+    renamed_file_path = desired_output_path + yt_obj.title + ".mp3"
+    rename(file_path, renamed_file_path)
+
 
 def is_audio_stream(stream_string):
     return "kbps" in stream_string
 
 def download_stream():
+    desired_output_path = tkinter.filedialog.askdirectory(title="Select download directory") + "/"
     try:
         finished_label.configure(text="Downloading video...", text_color="white")
         title.configure(text=yt_obj.title)
@@ -59,9 +67,10 @@ def download_stream():
         chosen_stream_string = resolution_dropdown.get()
         if not is_audio_stream(chosen_stream_string): #If the chosen stream is not an audio stream
             stream = yt_obj.streams.get_by_itag(get_itag(chosen_stream_string)) #Gets the video stream by itag
-            stream.download() #Downloads the stream
+            stream.download(output_path=desired_output_path) #Downloads the stream
         else: #If the chosen stream is an audio stream
             stream = yt_obj.streams.get_by_itag(get_itag(chosen_stream_string))
+            download_stream_as_mp3(stream, desired_output_path)
 
         finished_label.configure(text="Download finished!", text_color="white")
     except Exception as e:
