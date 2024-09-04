@@ -5,9 +5,9 @@ Simple Python Youtube video and audio downloader with the option of choosing the
 # Installation
 
 Run this command:
-sh
+```
 pip install -r requirements.txt
-
+```
 while in the directory folder.
 
 NOTE: Python 3+ required.
